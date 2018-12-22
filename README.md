@@ -1,3 +1,38 @@
+### Background  
+
+We already do similar project with TI Cortex-R5F(TMS570LC4357 Development Board), Xilinx Zynq FPGA(Digilent Zybo), and TI AM5728 Heterogeneous Architecture Board.  
+So we can do this project with experience with above projects.  
+You can see what we achieved at below link.  
+https://github.com/SHL-Third-Education/Project
+
+### Introduction Member  
+
+- [Master](#master)
+  - [Sanghoon Lee](#sanghoon-lee)
+- [Member](#member)
+  - [Hyunwoo Park](#hyunwoo-park)
+  - [Sangjae Ahn](#sangjae-ahn)
+  
+## Master
+### Sanghoon Lee
+### E-mail Address - gcccompil3r@gmail.com
+
+![sanghoon](./member_profile/sanghoon_profile_1.jpg)
+
+## Member
+
+### Hyunwoo Park
+### E-mail Address - phw820@naver.com
+
+![hyunwoo](./member_profile/hyunwoo_profile_1.jpg)
+
+### Sangjae Ahn
+### E-mail Address - sangjae2015@naver.com
+
+![sangjae](./member_profile/sangjae_profile_2.jpg)
+
+### Introuction
+
 This is the project repo for the final project of the Udacity Self-Driving Car Nanodegree: Programming a Real Self-Driving Car. For more information about the project, see the project introduction [here](https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/e1a23b06-329a-4684-a717-ad476f0d8dff/lessons/462c933d-9f24-42d3-8bdc-a08a5fc866e4/concepts/5ab4b122-83e6-436d-850f-9f4d26627fd9).
 
 Please use **one** of the two installation options, either native **or** docker installation.
