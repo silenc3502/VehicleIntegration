@@ -1,83 +1,46 @@
+import rospy
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
 
+from  yaw_controller import YawController
 
 class Controller(object):
-    #def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         # TODO: Implement
-        # pass
-
-    def __init__(self,
-                 vehicle_mass, 
-                 fuel_capacity, 
-                 brake_deadband, 
-                 decel_limit, 
-                 accel_limit, 
-                 wheel_radius, 
-                 wheel_base, 
-    	         steer_ratio, 
-                 max_lat_accel, 
-                 max_steer_angle):
-        self.yaw_controller = YawController(wheel_base, steer_ratio, 0.1, max_lat_accel, max_steer_angle)
-
-        kp = 2   #kp = 0.3
-        ki = 0.0004 #ki = 0.0004
-        kd = 0.1     #kd = 0.1
-        mn = 0
-        mx = accel_limit
-        self.throttle_controller = PID(kp, ki, kd, mn, mx)
-
-        tau = 0.5 # 1/(2pi*tau) = cutoff frequency
-        ts = 0.02 #sample time = 1/rate
-        self.vel_lpf = LowPassFilter(tau, ts)
-        
-        self.vehicle_mass = vehicle_mass
-        self.fuel_capacity = fuel_capacity
-        self.brake_deadband = brake_deadband
-        self.decel_limit = decel_limit
-        self.accel_limit = accel_limit
-        self.wheel_radius = wheel_radius
-        self.last_vel = 0
-        
-
-        self.last_time = rospy.get_time()
+        self.accel_limit = kwargs['accel_limit']
+        self.decel_limit = kwargs['decel_limit']
+        self.vehicle_mass = kwargs['vehicle_mass']
+        self.fuel_capacity = kwargs['fuel_capacity']
+        self.brake_deadband = kwargs['brake_deadband']
+        self.wheel_radius = kwargs['wheel_radius']
+        self.yaw_controller = YawController(kwargs['wheel_base'], kwargs['steer_ratio'],
+                                            ONE_MPH, kwargs['max_lat_accel'],
+                                            kwargs['max_steer_angle'])
 
     def control(self, *args, **kwargs):
         # TODO: Change the arg, kwarg list to suit your needs
         # Return throttle, brake, steer
-        if not dbw_enabled:
-        	self.throttle_controller.reset()
-        	return 0., 0., 0.
+        target_velocity_linear_x = args[0]
+        target_velocity_angular_z = args[1]
+        current_velocity_linear_x = args[2]
+        current_velocity_angular_z = args[3]
 
-        throttle, brake, steering = 0.0, 0.0, 0.0
+        steer_cmd = self.yaw_controller.get_steering(
+            target_velocity_linear_x, target_velocity_angular_z, current_velocity_linear_x)
 
-        #velocity error
-        vel_error = linear_vel -current_vel
-        
-        current_time = rospy.get_time()
-        sample_time = current_time-self.last_time
-
-        desired_accel = self.throttle_controller.step(vel_error, sample_time)
-        self.last_vel = current_vel
-        self.last_time = current_time
-
-        decel = max(vel_error, self.decel_limit)
-        torque = abs(decel) * (self.vehicle_mass + self.fuel_capacity*GAS_DENSITY) * self.wheel_radius 
-
-        if linear_vel == 0. and current_vel < 0.1:
-            throttle = 0
-            brake = torque
-
-        elif desired_accel < .1 and vel_error < 0:
-            throttle = 0
-            brake = torque  # Torque N*m
+        diff_vel = target_velocity_linear_x - current_velocity_linear_x;
+        accel = diff_vel / 0.5
+        if accel > 0:
+            accel = min(self.accel_limit, accel)
+            throttle_cmd = accel / self.accel_limit
+            brake_cmd = 0.0
         else:
-        	throttle = desired_accel
+            accel = max(self.decel_limit, accel)
+            throttle_cmd = 0.0
+            # F=m*a,T=F*r
+            torque = self.vehicle_mass * accel * self.wheel_radius
+            brake_cmd = abs(torque)
+            #rospy.logerr("brake_cmd = %d", brake_cmd)
 
-        steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
-
-        return throttle, brake, steering
-
-    def reset(self):
-        self.throttle_controller.reset()
+        return throttle_cmd, brake_cmd, steer_cmd

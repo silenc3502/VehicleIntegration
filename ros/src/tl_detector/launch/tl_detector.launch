@@ -1,4 +1,11 @@
 <?xml version="1.0"?>
 <launch>
-    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" output="screen" cwd="node"/>
+    <node pkg="tl_detector" type="tl_detector.py" name="tl_detector" output="screen" cwd="node">
+        <rosparam param="tl_classes">['red', 'off', 'green', 'yellow', 'unknown']</rosparam>
+        <rosparam param="tl_values">[0, 4, 2, 1, 4]</rosparam>
+        <rosparam param="tl_weights_file">./light_classification/include/weights/checkpoint-59-0.04.h5</rosparam>
+        <rosparam param="tl_sensor_dist">100</rosparam>
+        <rosparam param="tl_max_detections">1</rosparam>
+        <rosparam param="tl_write_output">False</rosparam>
+    </node>
 </launch>

@@ -12,7 +12,7 @@ import sensor_msgs.point_cloud2 as pcl2
 from std_msgs.msg import Header
 from cv_bridge import CvBridge, CvBridgeError
 
-from styx_msgs.msg import TrafficLight, TrafficLightArray, Lane
+from styx_msgs.msg import TrafficLight, TrafficLightArray
 import numpy as np
 from PIL import Image as PIL_Image
 from io import BytesIO
@@ -49,7 +49,7 @@ class Bridge(object):
             '/vehicle/steering_cmd': self.callback_steering,
             '/vehicle/throttle_cmd': self.callback_throttle,
             '/vehicle/brake_cmd': self.callback_brake,
-        '/final_waypoints': self.callback_path
+            '/final_waypoints': self.callback_path
         }
 
         self.subscribers = [rospy.Subscriber(e.topic, TYPE[e.type], self.callbacks[e.topic])

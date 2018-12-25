@@ -1,29 +1,73 @@
+import os
+import rospy
+import numpy as np
+from math import *
+import threading as t
+import tensorflow as tf
+import time
+
 from styx_msgs.msg import TrafficLight
+from include.model.KaNet import KaNet
 
 class TLClassifier(object):
     def __init__(self):
-        #TODO load classifier
-        #pass
-        PATH_TO_GRAPH = 'light_classification/model/frozen_inference_graph_sim.pb'
-        self.graph = tf.Graph()
-        self.threshold = .5
+        self.graph = tf.get_default_graph()
+
+        # load params
+        self.classes = rospy.get_param("~tl_classes")
+        self.values = rospy.get_param("~tl_values")
+        self.weights_file = rospy.get_param("~tl_weights_file")
+        self.max_detections = rospy.get_param("~tl_max_detections")
 
         with self.graph.as_default():
-            od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(PATH_TO_GRAPH, 'rb') as fid:
-                od_graph_def.ParseFromString(fid.read())
-                tf.import_graph_def(od_graph_def, name='')
+            self.model = KaNet(len(self.classes), (None, None, 3), 1.0, 0)
+            self.model.load_weights(self.weights_file, by_name=True)
 
-            self.image_tensor = self.graph.get_tensor_by_name('image_tensor:0')
-            self.boxes = self.graph.get_tensor_by_name('detection_boxes:0')
-            self.scores = self.graph.get_tensor_by_name('detection_scores:0')
-            self.classes = self.graph.get_tensor_by_name('detection_classes:0')
-            self.num_detections = self.graph.get_tensor_by_name(
-                'num_detections:0')
+        rospy.loginfo("[TL Classifier] -> Model Loaded!")
 
-        self.sess = tf.Session(graph=self.graph)
+        self.busy = False
+        self.state = TrafficLight.UNKNOWN
+    
+    def map_label(self, output):
+        """ Maps the argmax of model output to the traffic light label """
+        val = self.values[output]
 
-    def get_classification(self, image):
+        return np.uint8(val)
+    
+    def get_prediction(self, images):
+
+        with self.graph.as_default():
+            predictions = []
+            
+            
+            msize = min(self.max_detections, len(images))
+            times = np.zeros(msize)
+
+            for i in range(msize):
+                t0 = time.time()
+                img = np.asarray(images[i])
+
+                rospy.loginfo("[TL Classifier] -> Input shape: " + str(img.shape))
+
+                pred = self.model.predict(img[None, :, :, 0:3], batch_size=1)[0]
+
+                rospy.loginfo("[TL Classifier] -> Prediction: " + str(pred))
+
+                predictions.append(pred)
+                
+                t1 = time.time()
+                times[i] = (t1 - t0) * 1000
+            
+            predictions = np.sum(predictions, axis=0, keepdims=True)
+            pred_idx = np.argmax(predictions)
+            
+            self.state = self.map_label(pred_idx)
+            rospy.loginfo("[TL Classifier] -> TL Predicted: " + self.classes[pred_idx] + ", in " + str(np.sum(times)) + "ms")
+
+            self.busy = False
+            
+    
+    def get_classification(self, images):
         """Determines the color of the traffic light in the image
 
         Args:
@@ -33,32 +77,14 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        #TODO implement light color prediction
-        with self.graph.as_default():
-            img_expand = np.expand_dims(image, axis=0)
-            start = datetime.datetime.now()
-            (boxes, scores, classes, num_detections) = self.sess.run(
-                [self.boxes, self.scores, self.classes, self.num_detections],
-                feed_dict={self.image_tensor: img_expand})
-            end = datetime.datetime.now()
-            c = end - start
-            print(c.total_seconds())
 
-        boxes = np.squeeze(boxes)
-        scores = np.squeeze(scores)
-        classes = np.squeeze(classes).astype(np.int32)
+        if self.busy:
+            return TrafficLight.UNKNOWN
 
-        print('SCORES: ', scores[0])
-        print('CLASSES: ', classes[0])
+        self.busy = True
 
-        if scores[0] > self.threshold:
-            if classes[0] == 1:
-                print('GREEN')
-                return TrafficLight.GREEN
-            elif classes[0] == 2:
-                print('RED')
-                return TrafficLight.RED
-            elif classes[0] == 3:
-                print('YELLOW')
+        thread = t.Thread(target = self.get_prediction, args=(images,))
+        thread.start()
+        thread.join()
 
-        return TrafficLight.UNKNOWN
+        return self.state
